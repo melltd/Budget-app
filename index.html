@@ -57,16 +57,18 @@ mn=(m,o)=>{const[y,k]=m.split('-');return new Date(y,k-1,1).toLocaleDateString('
 addM=(m,n)=>{let[y,k]=m.split('-').map(Number);k+=n;y+=Math.floor((k-1)/12);k=(((k-1)%12)+12)%12+1;return y+'-'+p2(k)},
 toast=m=>{const t=$('t');t.textContent=m;t.className='show';setTimeout(()=>t.className='',1800)};
 let S={cats:{'Courses':0,'Plaisir':0,'Santé et véto':0,'Shopping et maison':0,'Transport':0,'Essence':0,'Imprévus':0,'Paiements en 4X':0},exp:[],
-fx:[],sav:{},goal:0,fixed:[],bh:{},rec:[]};
+fx:[],sav:{},goal:0,fixed:[],bh:{},rec:[],rev:[],ir:[]};
 try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
-let tab=0,vm=cur(),F={id:null,a:'',d:td(),c:'Courses',p:'Carte Revolut',n:''},armed=0,RF={n:'',a:'',d:'1',c:''};
+let tab=0,vm=cur(),F={id:null,a:'',d:td(),c:'Courses',p:'Carte Revolut',n:''},armed=0,RF={n:'',a:'',d:'1',c:''},RI={n:'',a:'',d:'1'},RV={a:'',n:''};
 const col=c=>PAL[Math.max(0,Object.keys(S.cats).indexOf(c))%PAL.length];
 const B=(c,m)=>{let v=S.cats[c]||0;(S.bh[c]||[]).forEach(([k,x])=>{if(k<=m)v=x});return v},isF=c=>S.fixed.includes(c),LOCK='Paiements en 4X';
+const PEND=m=>m===cur()?sum(S.ir.filter(r=>r.last<m).map(r=>r.a)):0,INC=m=>sum(S.rev.filter(e=>e.d.startsWith(m)).map(e=>e.a))+PEND(m);
 const bc=r=>r>1?'var(--over)':r>.8?'var(--warn)':'var(--ok)';
 const bar=(s,b)=>{const r=b>0?s/b:0;return `<div class="bar"><i style="width:${Math.min(r,1)*100}%;background:${bc(r)}"></i></div>`};
 
 function auto(){let ch=0;const c=cur();S.fx.forEach(f=>{while(f.left>0&&f.last<c){f.last=addM(f.last,1);f.left--;S.exp.push({id:uid(),d:f.last===c?td():f.last+'-01',a:f.a,c:'Paiements en 4X',p:'Paiement en 4X',n:f.n});ch=1}});
+ (S.ir||[]).forEach(r=>{for(;;){const m=addM(r.last,1),d=m+'-'+p2(r.day);if(m>c||(m===c&&d>td()))break;S.rev.push({id:uid(),d,a:r.a,n:r.n});r.last=m;ch=1}});
  (S.rec||[]).forEach(r=>{for(;;){const m=addM(r.last,1),d=m+'-'+p2(r.day);if(m>c||(m===c&&d>td()))break;S.exp.push({id:uid(),d,a:r.a,c:r.c,p:'Automatique',n:r.n});r.last=m;ch=1}});if(ch)save()}
 
 function vMois(){
@@ -79,7 +81,9 @@ function vMois(){
  if(near){const l=SC[near]-by[near];ins.push(near==='Plaisir'?`Plaisir : il te reste ${fmt(l)} à dépenser sans culpabilité.`:`${near} : ${Math.round(by[near]/SC[near]*100)} % utilisés, il reste ${fmt(l)}${dl?` pour ${dl} jour${dl>1?'s':''}`:''}.`)}
  if(!env){ins.length=0;ins.push('Règle d’abord tes enveloppes dans l’onglet Données.')}
  if(!ins.length)ins.push('Aucune dépense ce mois-ci : ajoute la première dans l’onglet Ajouter.');
- const rw=c=>`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between"><span>${esc(c)}</span><span class="m">${fmt(by[c]||0)} sur ${fmt(SC[c])}</span></div>${c==='Plaisir'?'<small>à dépenser sans culpabilité</small>':''}${isF(c)&&SC[c]>0&&by[c]>=SC[c]?'<small>payé ✓</small>':''}${bar(by[c]||0,SC[c])}</div>`;let off=0;const C=2*Math.PI*38,used=cs.filter(c=>by[c]>0);
+ const rw=c=>`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between"><span>${esc(c)}</span><span class="m">${fmt(by[c]||0)} sur ${fmt(SC[c])}</span></div>${c==='Plaisir'?'<small>à dépenser sans culpabilité</small>':''}${isF(c)&&SC[c]>0&&by[c]>=SC[c]?'<small>payé ✓</small>':''}${bar(by[c]||0,SC[c])}</div>`;const inc=INC(vm),pd=PEND(vm),sv=S.sav[vm]||0,ut=totAll+sv,rs=inc-ut,bs=Math.max(inc,ut),sg=(v,c)=>`<i style="flex:none;width:${v/bs*100}%;background:${c}"></i>`,lp=(v,c,l)=>`<div class="lg"><i style="background:${c}"></i>${l} ${fmt(v)} (${Math.round(v/inc*100)} %)</div>`;
+ const jg=inc>0?`<div class="c"><h3>Tes revenus du mois</h3><div class="bar" style="display:flex;height:16px">${sg(totF,'#6b7c77')}${sg(tot,'#2f7d6b')}${sg(sv,'#7b6fd0')}</div><div style="margin-top:8px">${lp(totF,'#6b7c77','Charges fixes')}${lp(tot,'#2f7d6b','Dépenses variables')}${lp(sv,'#7b6fd0','Épargne')}</div><div style="margin-top:8px">${rs>=0?`Il te reste <b>${fmt(rs)}</b> sur ${fmt(inc)}${pd>0?` (dont ${fmt(pd)} encore à recevoir)`:''}.`:`Tu dépasses ton revenu de <b>${fmt(-rs)}</b> ce mois-ci. Regarde les enveloppes pour rééquilibrer.`}</div></div>`:'<div class="c"><small>Ajoute tes revenus (salaire, CAF…) dans l’onglet Auto pour voir la jauge de ton mois.</small></div>';
+ let off=0;const C=2*Math.PI*38,used=cs.filter(c=>by[c]>0);
  const arcs=used.map(c=>{const l=by[c]/totAll*C,s=`<circle r="38" cx="50" cy="50" fill="none" stroke="${col(c)}" stroke-width="16" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 50 50)"/>`;off+=l;return s}).join('');
  const ms=[0,1,2,3,4,5].map(i=>addM(vm,i-5)),tt=ms.map(m=>sum(S.exp.filter(e=>e.d.startsWith(m)).map(e=>e.a))),mx=Math.max(envAll,...tt)*1.08,
  bars=ms.map((m,i)=>{const h=tt[i]/mx*90,x=i*50+12;return `<rect x="${x}" y="${100-h}" width="30" height="${h}" rx="5" fill="var(--acc)" opacity="${m===vm?1:.45}"/><text x="${x+15}" y="114" font-size="10" text-anchor="middle" fill="var(--mut)">${mn(m,{month:'short'})}</text>${tt[i]?`<text x="${x+15}" y="${96-h}" font-size="9" text-anchor="middle" fill="var(--mut)">${Math.round(tt[i])}</text>`:''}`}).join(''),
@@ -88,20 +92,22 @@ function vMois(){
  <div class="c"><small>${left>=0?'Il te reste pour tes dépenses variables':'Enveloppes variables dépassées de'}</small><div class="big">${fmt(Math.abs(left))}</div>
  <small>${isCur&&left>0?`soit environ ${fmt(left/dl)} par jour pendant ${dl} jour${dl>1?'s':''}`:`${fmt(tot)} dépensés sur ${fmt(env)}`}</small>${bar(tot,env)}${fc.length?`<small>Charges fixes : ${fmt(totF)} payées sur ${fmt(envF)}</small>`:''}</div>
  <div class="c">${ins.map(t=>`<div style="margin:4px 0">${esc(t)}</div>`).join('')}</div>
- <div class="c"><h3>Dépenses variables</h3>${vc.map(rw).join('')||'<small>Aucune catégorie.</small>'}</div>${fc.length?`<div class="c"><h3>Charges fixes</h3>${fc.map(rw).join('')}</div>`:''}
+ ${jg}<div class="c"><h3>Dépenses variables</h3>${vc.map(rw).join('')||'<small>Aucune catégorie.</small>'}</div>${fc.length?`<div class="c"><h3>Charges fixes</h3>${fc.map(rw).join('')}</div>`:''}
  <div class="c"><h3>Répartition</h3>${totAll?`<div style="display:flex;gap:14px;align-items:center"><svg viewBox="0 0 100 100" width="130" height="130">${arcs}</svg><div>${used.map(c=>`<div class="lg"><i style="background:${col(c)}"></i>${esc(c)} ${Math.round(by[c]/totAll*100)} %</div>`).join('')}</div></div>`:'<small>Rien à afficher pour l’instant.</small>'}</div>
  <div class="c"><h3>6 derniers mois</h3><svg viewBox="0 0 300 120" width="100%"><line x1="0" x2="300" y1="${ly}" y2="${ly}" stroke="var(--mut)" stroke-dasharray="4 4" opacity=".6"/>${bars}</svg><small>Trait pointillé : total de tes enveloppes.</small></div>
  <div class="c"><h3>Top 5 des dépenses</h3>${top.length?top.map(e=>`<div class="row"><span>${esc(e.n||e.c)}<br><small>${e.d.slice(8)}/${e.d.slice(5,7)}, ${esc(e.c)}</small></span><b>${fmt(e.a)}</b></div>`).join(''):'<small>Aucune dépense.</small>'}</div>`}
 
 function vAjout(){
- const ex=S.exp.filter(e=>e.d.startsWith(vm)).sort((a,b)=>b.d.localeCompare(a.d));
+ const ex=S.exp.filter(e=>e.d.startsWith(vm)).sort((a,b)=>b.d.localeCompare(a.d)),rv=S.rev.filter(e=>e.d.startsWith(vm)).sort((a,b)=>b.d.localeCompare(a.d));
  return `<h2>${F.id?'Modifier la dépense':'Nouvelle dépense'}</h2><div class="c">
  <input type="text" inputmode="decimal" placeholder="Montant en €" value="${esc(F.a)}" oninput="F.a=this.value" style="font-size:1.3rem;font-weight:600">
  <div class="chips">${Object.keys(S.cats).map((c,i)=>`<button class="chip${F.c===c?' on':''}" onclick="F.c=Object.keys(S.cats)[${i}];R()">${esc(c)}</button>`).join('')}</div>
  <div class="chips">${PAY.map(p=>`<button class="chip${F.p===p?' on':''}" onclick="F.p='${p}';R()">${p}</button>`).join('')}</div>
  <input type="date" value="${F.d}" onchange="F.d=this.value"><input type="text" placeholder="Note (facultatif)" value="${esc(F.n)}" oninput="F.n=this.value">
  <button class="btn" onclick="add()">${F.id?'Enregistrer':'Ajouter'}</button>${F.id?'<button class="btn s" onclick="F={id:null,a:\'\',d:td(),c:F.c,p:F.p,n:\'\'};R()">Annuler</button>':''}</div>
- <div class="c"><h3>Dépenses de ${mn(vm)}</h3>${ex.length?ex.map(e=>`<div class="row" onclick="edit('${e.id}')" style="cursor:pointer"><span>${esc(e.n||e.c)}<br><small>${e.d.slice(8)}/${e.d.slice(5,7)}, ${esc(e.c)}, ${e.p}</small></span><span><b>${fmt(e.a)}</b><button class="x" onclick="event.stopPropagation();del('${e.id}')" aria-label="Supprimer">×</button></span></div>`).join(''):'<small>Aucune dépense ce mois-ci. Touche une ligne pour la modifier.</small>'}</div>`}
+ <div class="c"><h3>Dépenses de ${mn(vm)}</h3>${ex.length?ex.map(e=>`<div class="row" onclick="edit('${e.id}')" style="cursor:pointer"><span>${esc(e.n||e.c)}<br><small>${e.d.slice(8)}/${e.d.slice(5,7)}, ${esc(e.c)}, ${e.p}</small></span><span><b>${fmt(e.a)}</b><button class="x" onclick="event.stopPropagation();del('${e.id}')" aria-label="Supprimer">×</button></span></div>`).join(''):'<small>Aucune dépense ce mois-ci. Touche une ligne pour la modifier.</small>'}</div>
+ <div class="c"><h3>Revenus de ${mn(vm)}</h3>${rv.length?rv.map(e=>`<div class="row"><span>${esc(e.n)}<br><small>${e.d.slice(8)}/${e.d.slice(5,7)}</small></span><span><b>${fmt(e.a)}</b><button class="x" onclick="delRev('${e.id}')" aria-label="Supprimer">×</button></span></div>`).join(''):'<small>Aucun revenu enregistré ce mois-ci.</small>'}
+ <div style="margin-top:10px"><small>Ajouter un revenu ponctuel</small></div><input inputmode="decimal" placeholder="Montant en €" value="${esc(RV.a)}" oninput="RV.a=this.value"><input placeholder="Note (ex. remboursement)" value="${esc(RV.n)}" oninput="RV.n=this.value"><button class="btn s" onclick="addRev()">Ajouter le revenu</button></div>`}
 
 function add(){const a=parseFloat(String(F.a).replace(',','.'));if(!(a>0)){toast('Entre un montant.');return}
  const o={id:F.id||uid(),d:F.d||td(),a,c:F.c,p:F.p,n:F.n.trim()};
@@ -110,6 +116,18 @@ function add(){const a=parseFloat(String(F.a).replace(',','.'));if(!(a>0)){toast
 function edit(id){const e=S.exp.find(x=>x.id===id);F={id,a:String(e.a),d:e.d,c:e.c,p:e.p,n:e.n||''};R();scrollTo(0,0)}
 function del(id){S.exp=S.exp.filter(e=>e.id!==id);save();toast('Supprimé');R()}
 
+function vInc(){
+ return `<h2>Revenus automatiques</h2><div class="c">${S.ir.length?S.ir.map((r,i)=>`<div class="row" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.n)}</b><br><small>le ${r.day} de chaque mois</small></div><div style="width:105px;text-align:right"><input style="margin:0 0 4px;text-align:right" inputmode="decimal" value="${r.a}" onchange="incA(${i},this.value)"><button class="x" onclick="incDel(${i})" aria-label="Supprimer">×</button></div></div>`).join('')+'<small>Un nouveau montant vaut pour les prochains mois, pas pour ceux déjà reçus.</small>':'<small>Aucun revenu automatique. Ajoute ton salaire, ta CAF… ils s’inscriront seuls chaque mois.</small>'}</div>
+ <div class="c"><h3>Ajouter un revenu</h3><div class="chips">${['Salaire','APL','Prime activité'].map(x=>`<button class="chip${RI.n===x?' on':''}" onclick="RI.n='${x}';R()">${x}</button>`).join('')}</div><input placeholder="Nom" value="${esc(RI.n)}" oninput="RI.n=this.value"><input inputmode="decimal" placeholder="Montant en €" value="${esc(RI.a)}" oninput="RI.a=this.value"><input inputmode="numeric" placeholder="Jour du mois (1 à 28)" value="${esc(RI.d)}" oninput="RI.d=this.value">
+ <button class="btn" onclick="addInc(1)">Ajouter dès ce mois</button><button class="btn s" onclick="addInc(0)">Dès le mois prochain</button><br><small>Choisis « dès le mois prochain » si tu as déjà saisi ce revenu ce mois-ci. Si ton salaire tombe en fin de mois, mets le 28.</small></div>`}
+function addInc(now){const a=parseFloat(String(RI.a).replace(',','.')),d=parseInt(RI.d),n=RI.n.trim();
+ if(!(a>0)||!(d>=1&&d<=28)||!n){toast('Nom, montant et jour (1 à 28) requis.');return}
+ S.ir.push({id:uid(),n,a,day:d,last:now?addM(cur(),-1):cur()});RI={n:'',a:'',d:'1'};auto();save();toast('Ajouté');R()}
+function incA(i,v){S.ir[i].a=parseFloat(String(v).replace(',','.'))||0;save();toast('Enregistré');R()}
+function incDel(i){S.ir.splice(i,1);save();R()}
+function addRev(){const a=parseFloat(String(RV.a).replace(',','.'));if(!(a>0)){toast('Entre un montant.');return}
+ S.rev.push({id:uid(),d:vm===cur()?td():vm+'-01',a,n:RV.n.trim()||'Revenu ponctuel'});RV={a:'',n:''};save();toast('Revenu ajouté');R()}
+function delRev(id){S.rev=S.rev.filter(e=>e.id!==id);save();R()}
 function vRec(){const cs=Object.keys(S.cats).filter(c=>c!==LOCK);
  return `<h2>Charges fixes automatiques</h2><div class="c">${S.rec.length?S.rec.map((r,i)=>`<div class="row" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.n||r.c)}</b><br><small>${esc(r.c)}, le ${r.day} de chaque mois</small></div><div style="width:105px;text-align:right"><input style="margin:0 0 4px;text-align:right" inputmode="decimal" value="${r.a}" onchange="recA(${i},this.value)"><button class="x" onclick="recDel(${i})" aria-label="Supprimer">×</button></div></div>`).join('')+'<small>Un nouveau montant vaut pour les prochains mois, pas pour ceux déjà inscrits.</small>':'<small>Aucune charge automatique. Ajoute ton loyer, ton assurance… elles s’inscriront seules chaque mois.</small>'}</div>
  <div class="c"><h3>Ajouter une charge fixe</h3><input placeholder="Nom (ex. Loyer)" value="${esc(RF.n)}" oninput="RF.n=this.value"><input inputmode="decimal" placeholder="Montant en €" value="${esc(RF.a)}" oninput="RF.a=this.value"><input inputmode="numeric" placeholder="Jour du mois (1 à 28)" value="${esc(RF.d)}" oninput="RF.d=this.value">
@@ -174,7 +192,7 @@ function impCsv(){const t=$('csv').value.trim();if(!t){toast('Rien à importer.'
   S.exp.push({id:uid(),d,a,c,p:iP>=0&&r[iP]?r[iP]:'Carte Revolut',n});ok++});
  save();toast(`${ok} importée${ok>1?'s':''}, ${sk} ignorée${sk>1?'s':''}`)}
 
-const V=[vMois,vAjout,()=>vRec()+v4x(),vEp,vDon];
+const V=[vMois,vAjout,()=>vInc()+vRec()+v4x(),vEp,vDon];
 function R(){$('v').innerHTML=V[tab]();$('nav').innerHTML=TABS.map((t,i)=>`<button class="${i===tab?'on':''}" onclick="tab=${i};armed=0;R();scrollTo(0,0)">${t}</button>`).join('')}
 auto();R();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){auto();R()}});
